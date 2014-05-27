@@ -1,0 +1,134 @@
+/**
+ *realiza la funcion de peticion TPSN al nodo 1.
+ * @author Barraza, Suarez
+ * @modified Apr 4, 2014 
+ */
+
+#include <Timer.h>
+#include "Tpsn2.h"
+#include "Tpsn1.h"
+
+
+
+module Tpsn2P {
+  uses interface Boot;
+  uses interface Leds;
+  uses interface SplitControl as AMControl; 
+  uses interface Packet;
+  uses interface AMSend;
+  uses interface Timer<TMilli> as Timer0;
+  uses interface CorrectTime;
+  uses interface PacketTimeStamp<TMilli, uint32_t> as PacketTimeStampMilli;
+  uses interface Receive;
+  uses interface LocalTime<TMilli> as LocalTime;
+}
+implementation {
+ uint32_t Tpsn2_time_aux; //variable para estampa de tiempo
+ uint32_t Delta_timeStamp2; // correcion del Delta
+ bool Waiting_anserws2;      //respuesta para el envio del paquete.
+ uint32_t  tpsn2_orginal_time; //Horal local
+ uint32_t Tpsn2_RadioTimeStamp;  //estampa el tiempo cuando sale al nodo L1                        
+ uint16_t counter2;              // Numero de secuencia para los paquetes enviados a L1 
+ message_t pktBuff;           // Buffer para almancenar el paquete en memoria
+        
+        enum {
+  L1_ADD_Node = 0x000A, // direccion de destino nodo 1
+};
+
+  event void Boot.booted() {
+    counter2 = 0; //Inicia el Nodo
+    call AMControl.start(); //enciende el Radio (ActiveMessageC)
+    call Leds.led0On(); //AL confirmarse el encendido enciende el led rojo
+  }
+
+  //A continuacion se presenta el codigo para el envio al nodo 0 y solicitar la
+  // hora base para la sincronizacion
+  event void AMControl.startDone(error_t err) {
+    if(err == SUCCESS) {
+      //Si el radio enciende normalmente envia paquetes cada 3 segundo
+      call Timer0.startPeriodic(TIMER_PERIOD_MILLI_TPSN2);
+    }
+    else {
+      //Si no enciende nuevamente el radio
+      call AMControl.start();
+    }
+  }
+
+  //radio 
+  event void AMControl.stopDone(error_t err) {
+   //Si el Radio se apaga no realiza ninguna accion. 
+  }
+
+    //Como se envia una señal en Broadcast se debe espera a que el medio este libre
+   //por lo tando 
+  event void Timer0.fired() {
+    //Declare first pointers and variables used in this function.
+    Tpsn2Msg_t * Tpsn2Msg; // Se reserva el espacio en memoria para el paquete de solicitud TPSN
+ 
+   
+    Tpsn2Msg = (Tpsn2Msg_t * )(call Packet.getPayload(&pktBuff, sizeof(Tpsn2Msg_t)));
+     //Contruccion de solicitud TPSN Beacon en memoria 
+    if (Tpsn2Msg == NULL){
+      // Se comprueba si se reservo la memoria correctamente.
+      return;
+    } 
+    
+  
+    counter2++; //Incrementa el contador para enviar cada paquete (secuencia)
+    
+    Tpsn2Msg->nodeId = TOS_NODE_ID; //Inserta en el encabezado el ID del Nodo.
+
+    Tpsn2Msg->seqNr = counter2; //Inserta el numero de secuencia en el ecabezado.
+  								//Se envia el paquete con direccion Broadcast. (broadcast).
+    call AMSend.send(L1_ADD_Node, &pktBuff, sizeof(Tpsn2Msg_t)); 
+   
+  }
+
+  event void AMSend.sendDone(message_t * msg, error_t err) {
+  	
+  	 // Esta funcion comprueba que el paquete se enviara correctamente
+    if(&pktBuff == msg) {
+    	if(call PacketTimeStampMilli.isValid(msg)){
+    	
+    		tpsn2_orginal_time= call PacketTimeStampMilli.timestamp(msg);
+    		Waiting_anserws2= TRUE;
+    		call Leds.led2Toggle();
+		    // Verificar que el mesaje salio  (estampa de tiempo valida ))
+    	    //y guardar tiempo mensaje salio del nodo 
+		      
+     
+		} else { 
+		  	Waiting_anserws2 = FALSE;
+		} 
+    }
+  }
+  // Se valida al recibir un paquete que cumpla con la caracteristicas de un mensaje de TPSN report .
+event message_t * Receive.receive(message_t *msg, void *payload, uint8_t len){
+    //reserva en memoria
+    Tpsn1_ReportMsg_t * Tpsn2Msg; //Apuntador de memoria
+ 
+    // verifia si la longitud del paquete y su estampa de tiempo son validas.
+    if (len == sizeof(Tpsn1_ReportMsg_t) && Waiting_anserws2){
+      //asigna una variable con la estructura del mensaje para el reporte TPSN para realizar el reporte.
+      Tpsn2Msg = (Tpsn1_ReportMsg_t*)payload;
+      if (Tpsn2Msg->Tpsn2SeqNr == counter2){
+	     //por motivos de procesamiento se asigna una variable antes de realizar el dt para realizar
+	     //la sicronizacion y enviar los paquetes con la hora correcta.
+	     
+	     
+	      Tpsn2_time_aux= Tpsn2Msg->Tpsn2RadTStamp;
+	      //se calcula el dt
+	      Delta_timeStamp2= Tpsn2_time_aux-tpsn2_orginal_time;
+	      // Se adjusta la hora de salida para cada paquete.
+	      
+	      call CorrectTime.set(call LocalTime.get()+ Delta_timeStamp2); 
+	      
+	      call Leds.led1Toggle(); // conmuta led verde
+          
+          }
+          
+      }
+    return msg; 
+  }  
+  
+  }

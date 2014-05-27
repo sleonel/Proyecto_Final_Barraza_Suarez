@@ -1,0 +1,186 @@
+/**
+ * Implementation of the l2 node. 
+ * The node turns on the red LED after booting. A timer is started. Every time
+ * this timer fires, a TPSN report packet is sent to L1 node , and the yellow led is 
+ * toggled. The packet contains the ID of this node and a sequence number. 
+ * Node receive a packet with time stamp from L1 received the request packet.
+ * this node adjust it time with L1 Node for synchronize the packets send to base station (report Beacon message).  
+ *  
+ * @author Barraza, Suarez.
+ * @modified Apr 4, 2014 
+ */
+
+#include <Timer.h>
+#include "Tpsn2.h"
+#include "Tpsn1.h"
+
+
+
+module Tpsn2P {
+  uses interface Boot;
+  uses interface Leds;
+  uses interface SplitControl as AMControl; //Active Message Control
+  uses interface Packet;
+  uses interface AMSend;
+  uses interface Timer<TMilli> as Timer0;
+  uses interface CorrectTime;
+  uses interface PacketTimeStamp<TMilli, uint32_t> as PacketTimeStampMilli;
+  uses interface Receive;
+  uses interface LocalTime<TMilli> as LocalTime;
+}
+implementation {
+
+ uint32_t Tpsn2_time_aux;          // 4 Bytes. for save temporarily time stamp from L1 node.
+ 
+ uint32_t Delta_timeStamp2;       // delta time between L1 and L2 nodes.
+ 
+ bool Waiting_anserws2;          // boolean from confirm a send packet.  
+ 
+ uint32_t  tpsn2_orginal_time;   // time stamp from the radio received packet.
+ 
+ uint32_t Tpsn2_RadioTimeStamp; // 4 Bytes. It contains the time stamp of the 
+                                // last received TPSN request, as set by the radio
+ 
+ uint16_t counter2;            // 2 Bytes. It contains the sequence number of 
+                               // released packets.
+ 
+ message_t pktBuff;            // many Bytes, packet buffer. This is not a pointer,
+                              // this is the allocation(space) a packet needs in memory. 
+                             //Functions related  
+                             // to packets access them via memory pointers
+                             // addresses, e.g.: &pktBuff
+        enum {
+  L1_ADD_Node = 0x000A,      // address to send the packet to L1 Node.
+};
+
+  event void Boot.booted() {
+    counter2 = 0; //initialize counter
+    call AMControl.start(); //start the radio module (ActiveMessageC)
+    call Leds.led0On(); //turn on the red LED.
+  }
+
+  //radio
+  event void AMControl.startDone(error_t err) {
+    if(err == SUCCESS) {
+      //if radio started normally, start a timer that will fire every 5 secs
+      call Timer0.startPeriodic(TIMER_PERIOD_MILLI_TPSN2);
+    }
+    else {
+      //in case radio did not start normally, try again
+      call AMControl.start();
+    }
+  }
+
+  //radio 
+  event void AMControl.stopDone(error_t err) {
+    //radio was stopped. Do nothing. 
+  }
+
+  //timer reached its time limit (every 5 secs.)
+  event void Timer0.fired() {
+    //Declare first pointers and variables used in this function.
+    Tpsn2Msg_t * Tpsn2Msg; // Pointer to a TPSN request message in memory
+                        // This is not an actual place/buffer in memory. 
+ 
+    //Prepare and send packet.
+    //First. Cast our packet (Tpsn2Msg_t) into a "TPSN request" type
+    //       Refer to the packet by using the "Tpsn2Msg" pointer.
+    Tpsn2Msg = (Tpsn2Msg_t * )(call Packet.getPayload(&pktBuff, sizeof(Tpsn2Msg_t)));
+ 
+    //Check that the casting was ok. 
+    if (Tpsn2Msg == NULL){
+      // Casting failed for any reason, the pointer Tpsn2Msg is NULL. 
+      // Do nothing and leave this function.
+      return;
+    } 
+    
+    //Otherwise, the pointer Tpsn2Msg is valid! Prepare packet!
+    counter2++; //increase counter
+    
+    Tpsn2Msg->nodeId = TOS_NODE_ID; //This is the ID of this node! 
+    //This value is provided at install(flashing) time by the user.
+
+    Tpsn2Msg->seqNr = counter2; // Set the sequence number of this packet.
+ 
+    // Send the packet. 
+    // AMSend uses the memory address of the original packetBuffer, but
+    // the size of the newly created Tpsn2Msg_t.  The destination address
+    // is L1 node , which is defined as 0x000A.
+    call AMSend.send(L1_ADD_Node, &pktBuff, sizeof(Tpsn2Msg_t)); 
+   
+  }
+
+  event void AMSend.sendDone(message_t * msg, error_t err) {
+  	
+  	
+    // This function comes with two arguments: a message pointer to the sent 
+    // message and an error indicator informing whether the packet was sent
+    // fine or had problems. We ignore the error information. 
+    
+    // Check if the sendDone corresponds to the packet sent by this
+    // application (BeaconC). Check that the pointer msg points to pktBuff   
+    if(&pktBuff == msg) {
+    	if(call PacketTimeStampMilli.isValid(msg)){
+    	  
+    	  	// if the time stamp is valid save it.
+    		tpsn2_orginal_time= call PacketTimeStampMilli.timestamp(msg);
+    		// received packet OK
+    		Waiting_anserws2= TRUE;
+		 
+		      
+     
+		} else { 
+		  	Waiting_anserws2 = FALSE;
+		} 
+    }
+  }
+  
+event message_t * Receive.receive(message_t *msg, void *payload, uint8_t len){
+    //Pointer declaration
+    Tpsn1_ReportMsg_t * Tpsn2Msg; // Pointer to a TPSN report message form L1.
+    //uint16_t ranTime; // a random value
+ 
+    // Check if the packet length and the time stamp are valid 
+    if (len == sizeof(Tpsn1_ReportMsg_t) && Waiting_anserws2){
+      //Check passed! Cast the payload pointer to TPSN report message form L1.
+      Tpsn2Msg = (Tpsn1_ReportMsg_t*)payload;
+      if (Tpsn2Msg->Tpsn2SeqNr == counter2){
+	      // Get the sequence number of the TPSN report message form L1.
+	      // Get the radio time stamp of the packet and make the correction 
+	      
+	      Tpsn2_time_aux= Tpsn2Msg->Tpsn2RadTStamp;
+	      Delta_timeStamp2= Tpsn2_time_aux-tpsn2_orginal_time;
+	      // due to a time synchronization protocol (if any exists).
+	      
+	      call CorrectTime.set(call LocalTime.get()+ Delta_timeStamp2); 
+	      
+	      call Leds.led1Toggle(); //Toggle yellow Led.
+          
+          }
+          
+      // Get the current time at this level (application) with the 
+      // respective correction due to the time synchronization protocol.
+      // Compare to the radio time stamp! 
+     
+      
+      // Now, as other nodes will try to send at this exact moment, packets can 
+      // collide and the l1 node will not be able to detect them correctly.
+      // To avoid this we wait a random time between 0 and 1 second using 
+      // the TimerWait timer.   
+     
+    }
+    // We now give back the received msg buffer. 
+    return msg; 
+  }  
+  
+  
+  
+
+
+
+
+
+
+
+
+}

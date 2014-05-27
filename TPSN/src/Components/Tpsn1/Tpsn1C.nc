@@ -1,0 +1,52 @@
+/**
+ * Node L2. 
+ * 
+ * Every time a timer fires, this component sends a packet with this node ID 
+ * and the packet's sequence number . This component is a TPSN request send to L0 node.
+ * This node receive a report packet from L0 with  time stamp that it received the request. 
+ * 
+ * TPSN report to L2 configuration. Basically, when this node hears 
+ * a TPSN request, it sends another packet "TPSN Report Message" with the 
+ * TPSN request sequence number and the time at which the packet was received.
+ * 
+ * 
+ * 
+ * @author Barraza, Suarez
+ * @modified Apr 22, 2014
+ */
+
+#include "Tpsn2.h"
+#include "Tpsn1.h"
+#include "TpsnReceiver0.h"
+
+configuration Tpsn1C {
+}
+implementation {
+  components MainC;
+  components LedsC as MyLedsC;
+  //components NoLedsC as MyLedsC;
+  components Tpsn1P as Tpsn1P;
+  components new TimerMilliC() as TimerC;
+  //use our components
+  components TPSN_ActiveMessageC as AMC; 
+  components new TPSN_SenderC(Tpsn1_MSG) as SenderC;
+  components new TPSN_SenderC(TPSN1_REPORT_MSG) as Sender2C;
+  components CorrectTimeC;
+  components new TPSN_ReceiverC(TPSN0_REPORT_MSG) as ReceiverC;
+  components new TPSN_ReceiverC(Tpsn2_MSG) as Receiver2C;
+  components LocalTimeMilliC;
+  
+  //connections
+  Tpsn1P.Boot      -> MainC;
+  Tpsn1P.Leds      -> MyLedsC;
+  Tpsn1P.Timer0    -> TimerC;
+  Tpsn1P.CorrectTime ->  CorrectTimeC.CorrectTime;
+  Tpsn1P.Packet    -> AMC;
+  Tpsn1P.AMControl -> AMC;
+  Tpsn1P.AMSendTo0    -> SenderC;
+  Tpsn1P.AMSendTo2    -> Sender2C;
+  Tpsn1P.PacketTimeStampMilli -> AMC;
+  Tpsn1P.ReceiveFrom0   -> ReceiverC;
+  Tpsn1P.ReceiveFrom2  -> Receiver2C;
+  Tpsn1P.LocalTime -> LocalTimeMilliC.LocalTime;
+}

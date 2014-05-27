@@ -1,0 +1,18 @@
+/**
+ * Aplicacion que realiza las funcionalidades del nodo de L1
+ * Sincroniza con L0 y sirve para sincronizar a L2
+ * 
+ *  ID DEL NODO 10
+ * @author Barraza, Suarez
+ * @modified Apr 22, 2014 
+ */
+
+//read above
+#define NODE_LEVEL 1 
+
+configuration Tpsn1AppC{
+}
+implementation{
+  components BeaconReceiverC;  //Realiza conexion con el reporte de mensajes tipo Beacon
+  components Tpsn1C; // TPSN con base y L2
+}

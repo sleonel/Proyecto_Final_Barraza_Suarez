@@ -1,0 +1,29 @@
+/** PROYECTO FINAL:  SINCRONIZACIÓN TEMPORAL EN REDES INALÁMBRICAS DE SENSORES CON EL PROTOCOLO TPSN.
+ * 
+ * 
+ * esta aplicacion posee funcionalidades para la creacion del nodo Base, y pruebas sincronizacion a traves del "Nodo Beacon.
+ * 
+ ** 
+ * Usar en la Consola de Ubuntus para ver los paquetes de cada nodo:
+ * 
+ *   java net.tinyos.tools.Listen -comm serial@/dev/ttyUSB1:iris
+ * 
+ * ID del nodo ==11.
+ *  
+ * @author Barraza,Suarez.
+ * @modified Mayo 23, 2014 
+ */
+
+// read above
+#define TPSN_BASE_NODE
+
+//read above
+#define NODE_LEVEL 0 
+
+configuration TpsnL0AppC{
+}
+implementation{
+  //components BeaconC;   //Realiza las funciones del Nodo de señalizacion (Beacon)
+  components TpsnReceiver0C;  //Conecta con la aplicacion para realizar la Sincronizacion.
+  
+}

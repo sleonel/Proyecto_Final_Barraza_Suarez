@@ -1,0 +1,115 @@
+/**
+ * Implementacion  del Reporte para el mensaje de Beacon. 
+ * 
+ * Al inciar este nodo, encendera un LED rojo , AL recibir  un paquete del nodo Beacon 
+ * paquetes de señalizacion via broadcast. Para confirmar su envio, el LED amarillo cambiara
+ * de estado on/off cada vez que se envie un paquete de este tipo
+ * 
+ * @author Luis Torres
+ * @modified  Barraza, Suarez ,Apr 4, 2014 
+ */
+
+#include <Timer.h>
+#include <RadioConfig.h>
+#include "Beacon.h"
+#include "BeaconReceiver.h"
+
+module BeaconReceiverP {
+ // Declarar modulos para utlizar.
+  uses interface Boot;
+  uses interface Leds;
+  uses interface Timer<TMilli> as TimerWait;
+  uses interface Packet;
+  uses interface AMSend;
+  uses interface Receive;
+  uses interface SplitControl as AMControl; 
+  uses interface PacketTimeStamp<TMilli, uint32_t> as PacketTimeStampMilli;
+  uses interface CorrectTime;
+  uses interface Random;
+}
+
+implementation {
+
+  //declaracion de Variables en Memoria.
+  uint16_t beaconSeqNr;  // 2 Bytes. Almaecena el numero de secuencia que se envio del Beacon 
+                         
+  uint32_t beaconRadioTimeStamp; // 4 Bytes. estampa del tiempo del mensaje para el reporte del beacon 
+                                
+ message_t pktBuff; // Contiene muchos Bytes necesarios para reservar en memoria e insertar los apuntadores.
+ 
+ //Inicializacion del Nodo.
+  event void Boot.booted() {
+    call AMControl.start(); //Inica modulos de Radios (TX/RX) (ActiveMessageC)
+    call Leds.led0On();  //Led rojo para confirmar el encendido del nodo.
+  }
+
+  //radio
+  event void AMControl.startDone(error_t err) {
+    if(err != SUCCESS) { //Se confirma que el radio se encienda Normalmente
+      call AMControl.start();  //Si el radio no enciende correctamente, enviar nuevamente la señal de encendido.
+    } 
+  }
+
+  //radio 
+  event void AMControl.stopDone(error_t err) {
+    //Si el Radio se detiene. no hace nada
+  }
+
+  //Tiempo de espera para enviar el reporte
+  event void TimerWait.fired() {
+    ReportMsg_t * rMsg; // Se reserva el espacio en memoria para el paquete de respuesta al  Beacon.
+    //Contruccion del paquete de respuesta al beacon en memoria
+    rMsg = (ReportMsg_t * )(call Packet.getPayload(&pktBuff, sizeof(ReportMsg_t)));
+ 
+     // Se comprueba si se reservo la memoria correctamente.
+    if (rMsg == NULL){
+      // Si falla no realiza ninguna funcion.
+      return;
+    }  
+ 
+ 
+    rMsg->nodeId  = TOS_NODE_ID;     //Inserta en el encabezado el ID del Nodo.
+    rMsg->bSeqNr  = beaconSeqNr;    //Inserta el numero de secuencia en el ecabezado igual al recibido por el Beacon.
+    rMsg->bRadTStamp = beaconRadioTimeStamp; //Se inserta la estampa del tiempo que se regista cuando se recibio el Beacon.
+    //Se envia el paquete con direccion Broadcast. (broadcast).
+    call AMSend.send(AM_BROADCAST_ADDR, &pktBuff, sizeof(ReportMsg_t));
+  }
+
+  event void AMSend.sendDone(message_t * msg, error_t err) {
+    //Cormfirma el envio del paquete
+    if(&pktBuff == msg) {
+      // comprueba y finaliza la transmision.
+      call Leds.led1Toggle(); // conmuta el LEd verde
+    }
+  }
+
+  // Se valida al recibir un paquete que cumpla con la caracteristicas de un mensaje de Beacon .
+  event message_t * Receive.receive(message_t *msg, void *payload, uint8_t len){
+    //reserva en memoria
+    BeaconMsg_t* bMsg; //Apuntador de memoria
+    uint16_t ranTime; // a random value
+ 
+    // verifia si la longitud del paquete y su estampa de tiempo son validas.
+    if (len == sizeof(BeaconMsg_t)&&(call PacketTimeStampMilli.isValid(msg))) {
+      //asigna una variable con la estructura del mensaje Beacon para realizar el reporte.
+      bMsg = (BeaconMsg_t*)payload;
+      
+      // SObrescribe la secuencia del paquete que se recibio. 
+      beaconSeqNr = bMsg->seqNr;
+      // Realiza correccion de tiempo (si hay protocolo de sincronizacion funcionado)
+      beaconRadioTimeStamp = 
+          call CorrectTime.adjust(call PacketTimeStampMilli.timestamp(msg));
+         call Leds.led2Toggle(); //enciende el LEd verde.
+         
+      
+     
+      
+      // el Mensaje se envia en Broadcast a la epera de que el canal este libre
+      ranTime = (call Random.rand16())%1024;  
+      call TimerWait.startOneShot(ranTime);   
+    }
+    // Se recupera el apuntador del mensaje  Para la respuesta al Beacon . 
+    return msg; 
+  }
+  
+}

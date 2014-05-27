@@ -1,0 +1,18 @@
+/**
+ * Modificacion del la funcion CorrectTime para adjustar las estampas de tiempo al enviar los paquetes.
+ * @author Barraza, Suarez
+ * @modified Apr 12, 2014
+ */
+
+interface CorrectTime{
+  
+
+  command void set(uint32_t value);
+
+ 
+  command uint32_t get();
+
+
+  command uint32_t adjust(uint32_t value);
+  
+}

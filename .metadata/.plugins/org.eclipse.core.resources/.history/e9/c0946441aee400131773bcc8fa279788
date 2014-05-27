@@ -1,0 +1,29 @@
+/**
+ *realiza la funcion de peticion TPSN al nodo base.
+ * confirma la hora de la base al nodo L2
+ * @author Barraza, Suarez
+ * @modified Apr 4, 2014 
+ */
+
+ 
+#include <Timer.h>
+#include "Tpsn1.h"
+#include "Tpsn2.h"
+#include "Beacon.h"
+#include "TpsnReceiver0.h"
+ 
+ module Tpsn1P {
+  uses interface Boot;
+  uses interface Leds;
+  uses interface SplitControl as AMControl; 
+  uses interface Packet;
+  uses interface AMSend as AMSendTo0;
+  uses interface AMSend as AMSendTo2;
+  uses interface Timer<TMilli> as Timer0;
+  uses interface CorrectTime;
+  uses interface PacketTimeStamp<TMilli, uint32_t> as PacketTimeStampMilli;
+  uses interface Receive as ReceiveFrom0;
+  uses interface Receive as ReceiveFrom2;
+  uses interface LocalTime<TMilli> as LocalTime;
+}
+ 

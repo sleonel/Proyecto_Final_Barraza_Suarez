@@ -1,0 +1,53 @@
+/**
+ * This module keeps the correct time, that is, the synchronized time, 
+ * based on the actual local time at the node and on a correction to that 
+ * time: deltaTime
+ * It offers the interface CorrectTime, defined by us. This interface allows
+ * to know the corrected local time, and to set a correct local time, by 
+ * means of updating a deltaTime value.
+ * @author Barraza, Suarez
+ * @modified Apr 12, 2014
+ */
+
+module CorrectTimeP{
+  
+  // provide this interface to other modules
+  provides interface CorrectTime;
+  
+  // uses services and functions of other modules
+  uses {
+    interface Boot;
+    interface LocalTime<TMilli> as LocalTime;  
+    }
+  
+}
+implementation{
+  
+  //The time correction
+  uint32_t deltaTime; 
+  
+
+  event void Boot.booted(){
+    deltaTime = 0;
+  }  
+  
+  // return the local time plus the delta (correction)
+  command uint32_t CorrectTime.get(){
+    return (call LocalTime.get() + deltaTime);
+  }
+ 
+  // Use the time of another (lower level) node to set it as 
+  // our correct time. For this we compute the difference 
+  // between the provided value and the actual local time and 
+  // stored it in deltaTime 
+  command void CorrectTime.set(uint32_t value){
+    deltaTime = value - (call LocalTime.get());
+  }
+ 
+  // Translate a time in local clock into a corrected(adjusted) time
+  // using the deltaTime 
+  command uint32_t CorrectTime.adjust(uint32_t value){
+    return (value + deltaTime);   
+  }     
+
+}

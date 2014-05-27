@@ -1,0 +1,110 @@
+/**
+  Recibe peticion del protocolo TPSN del nodo L1
+ * confirma la hora de la base al nodo L1
+ * @author Barraza, Suarez
+ * @modified Apr 4, 2014 
+ */
+
+#include <Timer.h>
+#include <RadioConfig.h>
+#include "Tpsn1.h"
+#include "TpsnReceiver0.h"
+
+
+module TpsnReceiver0P {
+  uses interface Boot;
+  uses interface Leds;
+  uses interface Packet;
+  uses interface AMSend;
+  uses interface Receive;
+  uses interface SplitControl as AMControl;
+  uses interface PacketTimeStamp<TMilli, uint32_t> as PacketTimeStampMilli;
+  uses interface CorrectTime;
+  uses interface Random;
+  uses interface LocalTime<TMilli> as LocalTime;
+}
+
+implementation {
+
+  uint16_t Tpsn0SeqNr;  //Numero de secuencia para el paquete que viene del nodo L1
+                          
+  uint32_t Tpsn0RadTStamp; //estampa el tiempo cuando sale al nodo L1                      
+                            
+      enum {
+  L1_ADD_Node = 0x000a,
+};
+  message_t pktBuff; //estampa el tiempo cuando sale al nodo L2
+  
+  
+  event void Boot.booted() {   //Inicia el Nodo
+    call AMControl.start(); //enciende el Radio (ActiveMessageC)
+    call Leds.led0On(); //AL confirmarse el encendido enciende el led rojo.
+  }
+
+  //radio
+  event void AMControl.startDone(error_t err) {
+    if(err != SUCCESS) { //Si no enciende nuevamente el radio
+      call AMControl.start(); 
+    } 
+  }
+
+  //radio 
+  event void AMControl.stopDone(error_t err) {
+    //Si el Radio se apaga no realiza ninguna accion. 
+  }
+
+// Se valida al recibir un paquete que cumpla con la caracteristicas de un mensaje de TPSN report .
+ event message_t * Receive.receive(message_t *msg, void *payload, uint8_t len){
+    //reserva en memoria
+    Tpsn1Msg_t* Tpsn1Msg;
+     //Apuntador de memoria
+     // se almacena en el paquete de reporte
+    Tpsn0_ReportMsg_t* Tpsn0rMsg;
+    
+ 
+    // Se Valida si es nodo cumple con las estampas de tiempo y la longitud del paquete es correcta.
+    if ((len == sizeof(Tpsn1Msg_t))&&(call PacketTimeStampMilli.isValid(msg))) {
+     
+      Tpsn1Msg = (Tpsn1Msg_t*)payload;
+     
+      //insertar el numero de secuencia con que se envio la peticion
+      Tpsn0SeqNr = Tpsn1Msg->seqNr;
+      
+      
+      //enviar la hora con la que el paquete se recibio
+      Tpsn0RadTStamp = call PacketTimeStampMilli.timestamp(msg); 
+       
+      
+    if (Tpsn0rMsg == NULL){
+      //verifica que el paquete se almaceno correctamente
+      return msg;
+    }  
+ 
+    
+ 
+    Tpsn0rMsg->nodeId  = TOS_NODE_ID;     // inserta el id del nodo en el paquete
+    Tpsn0rMsg->Tpsn0SeqNr  = Tpsn0SeqNr;     // Inserta el numero de secuencia de la peticion
+   Tpsn0rMsg->Tpsn0RadTStamp = Tpsn0RadTStamp; //inserta la estampa de tiempo
+   
+ 
+    //envia el Paquete
+    call AMSend.send(L1_ADD_Node, &pktBuff, sizeof(Tpsn0_ReportMsg_t));
+   
+    }
+   
+    return msg; 
+  }
+
+ 
+  event void AMSend.sendDone(message_t * msg, error_t err) {
+     // Verifica que se envio el paquete para liberal memoria  
+    if(&pktBuff == msg) {
+   
+      call Leds.led1Toggle(); // conmuta led verde
+    }
+    return msg;
+  }
+
+
+  
+}

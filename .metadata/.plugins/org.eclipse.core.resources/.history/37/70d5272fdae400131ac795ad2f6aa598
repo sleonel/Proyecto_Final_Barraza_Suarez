@@ -1,0 +1,30 @@
+/**
+ * Este archivo contine las estructuras para crear el paquete de respuesta
+ * la a senal de Beacon y reportarlo al nodo base.
+ *  Tambien contiene  las constantes para el tipo de mensaje, que se utilizara.
+
+ * @author luis
+ * @modified Barraza,Suarez Mayo 23, 2014
+ *  
+ */
+
+#ifndef BEACON_RECEIVER_H
+#define BEACON_RECEIVER_H
+
+enum {
+
+  
+  //  recomendaciones:"The active message type selected here can be any value above 127, as 
+  // recommended in the TEP-4 (http://www.tinyos.net/tinyos-2.x/doc/txt/tep4.txt)".
+  REPORT_MSG = 129,   // perido para el envio de los paquetes del report Beacon 5 secs = 5*1024 "ms"
+  TIMER_PERIOD_MILLI_BEACON = 5120  // 5 secs = 5*1024 "ms"
+};
+
+typedef nx_struct ReportMsg {
+  nx_uint16_t nodeId;   // node ID (Numero unico)
+  nx_uint16_t bSeqNr; // secuencia del paquete  Beacon report
+  nx_uint32_t bRadTStamp; // estampa de tiempo.
+} ReportMsg_t;   //Se declara el BeaconMessageType.
+
+
+#endif /* BEACON_RECEIVER_H */

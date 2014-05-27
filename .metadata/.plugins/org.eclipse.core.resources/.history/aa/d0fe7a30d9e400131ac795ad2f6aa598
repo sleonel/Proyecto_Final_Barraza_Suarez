@@ -1,0 +1,31 @@
+/**
+ * Use this component as the AMSenderC in the TPSN project. 
+ * 
+ * @author Barraza, Suarez
+ * @modified Apr 23, 2014
+ */
+
+#include "AM.h"
+
+generic configuration TPSN_SenderC(am_id_t AMId) {
+  provides {
+    interface AMSend;
+    interface Packet;
+    interface AMPacket;
+  }
+}
+
+implementation {
+  components new AMQueueEntryP(AMId) as AMQueueEntryP;
+  components TPSN_AMQueueP;
+  components TPSN_ActiveMessageC;
+
+  //export PROVIDED interfaces
+  AMSend    = AMQueueEntryP;
+  Packet    = TPSN_ActiveMessageC.Packet;
+  AMPacket  = TPSN_ActiveMessageC.AMPacket;
+
+  //connections
+  AMQueueEntryP.Send     -> TPSN_AMQueueP.Send[unique(UQ_AMQUEUE_SEND)];
+  AMQueueEntryP.AMPacket -> TPSN_ActiveMessageC;
+}

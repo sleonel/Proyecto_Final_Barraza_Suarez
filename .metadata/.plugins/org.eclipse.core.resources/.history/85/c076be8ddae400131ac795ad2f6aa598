@@ -1,0 +1,42 @@
+/**
+ * Beacon receptor. 
+ * 
+ * Cada cierto tiempo esta aplicacion enviara un paquete de respuesta al nodo Base 
+ * para la verificacion del protocolo TPSN
+ * 
+ * 
+ * @author Barraza, Suarez.
+ * @modified  Apr 22, 2014
+ */
+
+#include "Beacon.h"      //Conexion con variables no declaradas en este archivo y son necesarias para su ejecucion.
+#include "BeaconReceiver.h"
+//Programa principal
+configuration BeaconReceiverC {
+}
+implementation {
+  //Modulos a implementar.
+  components MainC;
+  components NoLedsC as MyLedsC;
+  components BeaconReceiverP as BRP;
+  components new TimerMilliC() as TimerC;
+  components RandomC;
+  components CorrectTimeC;
+  components TPSN_ActiveMessageC as AMC;
+  components new TPSN_SenderC(REPORT_MSG) as SenderC;
+  components new TPSN_ReceiverC(BEACON_MSG) as ReceiverC;
+
+  //Se declaran las conexiones para cada modulo de TinyOS.  
+  BRP.Boot                 -> MainC; //encendido del Nodo.
+  BRP.Leds                 -> MyLedsC; //Configuracion de LEDS para los nodos.
+  BRP.TimerWait            -> TimerC;  // Tiempos para la transimision de paquetes.
+  BRP.CorrectTime          -> CorrectTimeC; //ajuste de tiempo para los nodos.
+  BRP.Random               -> RandomC;
+
+  BRP.Packet               -> AMC; // Construccion de los paquetes.
+  BRP.AMControl            -> AMC;  // Configuracin del Radio para cada nodo.
+  BRP.PacketTimeStampMilli -> AMC;  //Estampa de tiempo.
+  BRP.AMSend               -> SenderC; //Envio de paquetes.
+  BRP.Receive              -> ReceiverC; // Recepcion de paquetes.
+
+}

@@ -1,0 +1,6 @@
+/**
+ *realiza la funcion de peticion TPSN al nodo base.
+ * confirma la hora de la base al nodo L2
+ * @author Barraza, Suarez
+ * @modified Apr 4, 2014 
+ */

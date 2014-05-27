@@ -1,0 +1,200 @@
+/**
+ *realiza la funcion de peticion TPSN al nodo base.
+ * confirma la hora de la base al nodo L2
+ * @author Barraza, Suarez
+ * @modified Apr 4, 2014 
+ */
+
+#include <Timer.h>
+#include "Tpsn1.h"
+#include "Tpsn2.h"
+#include "Beacon.h"
+#include "TpsnReceiver0.h"
+
+module Tpsn1P {
+ // uses interface Boot;
+  uses interface Leds;
+  //uses interface SplitControl as AMControl; 
+  uses interface Packet;
+  //uses interface AMSend as AMSendTo0;
+  uses interface AMSend as AMSendTo2;
+  //uses interface Timer<TMilli> as Timer0;
+  uses interface CorrectTime;
+  uses interface PacketTimeStamp<TMilli, uint32_t> as PacketTimeStampMilli;
+  //uses interface Receive as ReceiveFrom0;
+  uses interface Receive as ReceiveFrom2;
+  uses interface LocalTime<TMilli> as LocalTime;
+}
+implementation {
+
+ uint32_t Tpsn1_time_aux; //variable para estampa de tiempo
+ uint32_t Delta_timeStamp1; // correcion del Delta
+ bool Waiting_anserws;      //respuesta para el envio del paquete.
+ uint32_t  tpsn1_orginal_time; //Horal local
+ uint32_t Tpsn1_RadioTimeStamp; //estampa el tiempo cuando sale al nodo L0
+ uint32_t Tpsn2RadTStamp; //estampa el tiempo cuando sale al nodo L2
+ uint16_t Tpsn2SeqNr; //Numero de secuencia para el paquete que viene del nodo L2
+ uint16_t counter;  // Numero de secuencia para los paquetes enviados a L0 
+message_t pktBuff; // Buffer para almancenar el paquete en memoria
+ 
+ 
+  enum {
+  L0_ADD_Node = 0x000B, // direccion de destino nodo 0
+  L2_ADD_Node = 0x0009 // direccion de destino nodo 2
+  };
+/**
+  event void Boot.booted() {
+    counter = 0; //Inicia el Nodo
+    call AMControl.start(); //enciende el Radio (ActiveMessageC)
+    call Leds.led0On(); //AL confirmarse el encendido enciende el led rojo
+  }
+
+  //A continuacion se presenta el codigo para el envio al nodo 0 y solicitar la
+  // hora base para la sincronizacion
+  event void AMControl.startDone(error_t err) {
+    if(err == SUCCESS) {
+      //Si el radio enciende normalmente envia paquetes cada 3 segundo
+      call Timer0.startPeriodic(TIMER_PERIOD_MILLI_TPSN1);
+    }
+    else {
+      //Si no enciende nuevamente el radio
+      call AMControl.start();
+    }
+  }
+
+  //radio 
+  event void AMControl.stopDone(error_t err) {
+    //Si el Radio se apaga no realiza ninguna accion. 
+  }
+
+  //Como se envia una señal en Broadcast se debe espera a que el medio este libre
+ //por lo tando 
+  event void Timer0.fired() {
+    
+    Tpsn1Msg_t * Tpsn1Msg;  // Se reserva el espacio en memoria para el paquete de solicitud TPSN
+ 
+    
+    Tpsn1Msg = (Tpsn1Msg_t * )(call Packet.getPayload(&pktBuff, sizeof(Tpsn1Msg_t)));
+    //Contruccion de solicitud TPSN Beacon en memoria
+     
+    if (Tpsn1Msg == NULL){
+      // Se comprueba si se reservo la memoria correctamente.
+      
+      return;
+    } 
+    
+    
+    counter++; //Incrementa el contador para enviar cada paquete (secuencia)
+    
+    Tpsn1Msg->nodeId = TOS_NODE_ID; //Inserta en el encabezado el ID del Nodo.
+    
+
+    Tpsn1Msg->seqNr = counter; //Inserta el numero de secuencia en el ecabezado.
+  //Se envia el paquete con direccion Broadcast. (broadcast).
+    call AMSendTo0.send(L0_ADD_Node, &pktBuff, sizeof(Tpsn1Msg_t)); 
+   
+  }
+
+  event void AMSendTo0.sendDone(message_t * msg, error_t err) {
+  // Esta funcion comprueba que el paquete se enviara correctamente.
+  
+    if(&pktBuff == msg) {
+    	if(call PacketTimeStampMilli.isValid(msg)){
+    	    // Verificar que el mesaje salio  (estampa de tiempo valida ))
+    	    //y guardar tiempo mensaje salio del nodo 
+    	    
+    		tpsn1_orginal_time= call PacketTimeStampMilli.timestamp(msg);
+    		Waiting_anserws= TRUE;  
+     
+		} else { 
+		  	Waiting_anserws = FALSE;
+		} 
+    }
+  }
+  // Se valida al recibir un paquete que cumpla con la caracteristicas de un mensaje de TPSN report .
+event message_t * ReceiveFrom0.receive(message_t *msg, void *payload, uint8_t len){
+    //reserva en memoria
+    Tpsn0_ReportMsg_t * Tpsn1Msg;  //Apuntador de memoria
+ 
+     // verifia si la longitud del paquete y su estampa de tiempo son validas.
+    if (len == sizeof(Tpsn0_ReportMsg_t) && Waiting_anserws){
+      //asigna una variable con la estructura del mensaje para el reporte TPSN para realizar el reporte.
+      Tpsn1Msg = (Tpsn0_ReportMsg_t*)payload;
+      // Verifica el numero de secuencia.
+      if (Tpsn1Msg->Tpsn0SeqNr == counter){
+	     //por motivos de procesamiento se asigna una variable antes de realizar el dt para realizar
+	     //la sicronizacion y enviar los paquetes con la hora correcta.
+	      Tpsn1_time_aux= Tpsn1Msg->Tpsn0RadTStamp;
+	      
+	      //se calcula el dt
+	      Delta_timeStamp1= Tpsn1_time_aux-tpsn1_orginal_time;
+	     // Se adjusta la hora de salida para cada paquete.
+	     call CorrectTime.set(call LocalTime.get()+ Delta_timeStamp1); 
+	     call Leds.led1Toggle(); // conmuta led verde
+          
+          }
+          
+    } 
+    return msg; 
+  }  
+  */
+  
+  
+   /**
+    * A Continuacion se realiza en envio del reporte para la sincronizacion del protocolo TPSN
+    * de la misma forma que el nodo Base realiza con el nodo 1 este lo hace con el nodo 2 
+ */
+
+   event message_t * ReceiveFrom2.receive(message_t *msg, void *payload, uint8_t len){
+   
+    Tpsn2Msg_t* Tpsn2Msg; 
+    Tpsn1_ReportMsg_t* Tpsn2rMsg;
+     
+ 
+ 
+ 
+    
+    if ((len == sizeof(Tpsn2Msg_t))&&(call PacketTimeStampMilli.isValid(msg))) {
+      
+      Tpsn2Msg = (Tpsn2Msg_t*)payload;
+     
+      
+      Tpsn2SeqNr = Tpsn2Msg->seqNr;
+     
+      Tpsn2RadTStamp = call CorrectTime.adjust(call PacketTimeStampMilli.timestamp(msg)); 
+      
+    
+      
+    if (Tpsn2rMsg == NULL){
+   
+      return msg;
+    }  
+ 
+   
+    Tpsn2rMsg->node1Id  = TOS_NODE_ID;    
+    Tpsn2rMsg->Tpsn2RadTStamp = Tpsn2RadTStamp; 
+    
+    call AMSendTo2.send(L2_ADD_Node, &pktBuff, sizeof(Tpsn1_ReportMsg_t));
+   
+    }
+   
+    return msg; 
+  }
+
+
+
+ 
+  event void AMSendTo2.sendDone(message_t * msg, error_t err) {
+    
+    if(&pktBuff == msg) {
+      
+      call Leds.led1Toggle(); 
+    }
+  }
+  
+  
+
+	
+
+	
+}

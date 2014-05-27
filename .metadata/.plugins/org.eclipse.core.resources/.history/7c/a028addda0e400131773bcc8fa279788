@@ -1,0 +1,82 @@
+/**
+ * Implementacion  del Beacon. 
+ * 
+ * Al inciar este nodo, encendera un LED rojo , tiempo despues enviara periodicamente
+ * paquetes de señalizacion via broadcast. Para confirmar su envio, el LED amarillo cambiara
+ * de estado on/off cada vez que se envie un paquete de este tipo
+ * 
+ * @author Barraza, Suarez
+ * @modified Apr 4, 2014 
+ */
+
+
+#include <Timer.h>
+#include "Beacon.h"
+
+module BeaconP {
+  // Declarar modulos para utlizar.
+  uses interface Boot;
+  uses interface Leds;
+  uses interface SplitControl as AMControl;
+  uses interface Packet;
+  uses interface AMSend;
+  uses interface Timer<TMilli> as Timer0;
+}
+implementation {
+
+  //declaracion de Variables en Memoria.
+  uint16_t counter;  // 2 Bytes. Paquete para registar la secuencia del Nodo Beacon
+  message_t pktBuff; // Contiene muchos Bytes necesarios para reservar en memoria e insertar los apuntadores.
+
+  //Inicializacion del Nodo.
+  event void Boot.booted() { 
+    counter = 0; //Contador de secuencia del Beacion
+    call AMControl.start(); //Inica modulos de Radios (TX/RX) (ActiveMessageC)
+    call Leds.led0On(); //Led rojo para confirmar el encendido del nodo.
+  }
+
+  //radio
+  event void AMControl.startDone(error_t err) {
+    if(err == SUCCESS) { //Se confirma que el radio se encienda Normalmente
+      call Timer0.startPeriodic(TIMER_PERIOD_MILLI_BEACON); //Envio de paquete cada 5 Segundos.
+    }
+    else {
+     
+      call AMControl.start(); //Si el radio no enciende correctamente, enviar nuevamente la señal de encendido.
+    }
+  }
+
+  // Configuracion del encendido del radio 
+  event void AMControl.stopDone(error_t err) {
+    //Si el Radio se detiene. no hace nada
+  }
+
+  //Temporizador  (Cada 5 secs.)
+  event void Timer0.fired() {
+    BeaconMsg_t * bMsg; // Se reserva el espacio en memoria para el paquete del Beacon.
+    bMsg = (BeaconMsg_t * )(call Packet.getPayload(&pktBuff, sizeof(BeaconMsg_t)));
+  //Contruccion del paquete Beacon en memoria
+    if (bMsg == NULL){
+      // Se comprueba si se reservo la memoria correctamente.
+      return;
+    } 
+    counter++; //Incrementa el contador para enviar cada paquete (secuencia)
+    
+    bMsg->nodeId = TOS_NODE_ID; //Inserta en el encabezado el ID del Nodo.
+
+    bMsg->seqNr = counter; //Inserta el numero de secuencia en el ecabezado.
+  //Se envia el paquete con direccion Broadcast. (broadcast).
+    call AMSend.send(AM_BROADCAST_ADDR, &pktBuff, sizeof(BeaconMsg_t));
+   
+  }
+
+  event void AMSend.sendDone(message_t * msg, error_t err) {
+    // Esta funcion comprueba que el paquete se enviara correctamente.
+    if(&pktBuff == msg) {
+      // Se confirma que la transimsion finalizara.
+      call Leds.led2Toggle(); // Conmuta el estado del Led Amarrillo.
+      
+    }
+  }
+
+}

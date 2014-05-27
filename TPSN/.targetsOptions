@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<buildTargets>
+<default version="4">
+<default>true</default>
+<project/>
+<target>iris</target>
+<make-extras/>
+<includes/>
+<excludes>
+<exclude>.*\.svn.*</exclude>
+</excludes>
+<typedefs/>
+<macros/>
+<boards/>
+<no-std-incl>false</no-std-incl>
+<component/>
+<component-file>/TPSN/src/Apps/TpsnL0AppC.nc</component-file>
+<include-last-build>true</include-last-build>
+<include-env-default-paths>true</include-env-default-paths>
+<environment_variables/>
+</default>
+<custom>
+<target loop="false" name="L0" time="0.0" version="4">
+<default>false</default>
+<project use-custom="true"/>
+<target use-custom="true">iris</target>
+<make-extras use-custom="true" use-default="true">
+<extra name="install">
+<parameter ask="false" name="Mote Id">11</parameter>
+</extra>
+<extra name="mib510">
+<parameter ask="false" name="&lt;dev&gt;">/dev/ttyUSB0</parameter>
+</extra>
+</make-extras>
+<includes use-custom="true" use-default="true"/>
+<excludes use-custom="true" use-default="true"/>
+<typedefs use-custom="true" use-default="true"/>
+<macros use-custom="true" use-default="true"/>
+<boards use-custom="true" use-default="true"/>
+<no-std-incl use-custom="true">false</no-std-incl>
+<component use-custom="false"/>
+<component-file use-custom="true">/TPSN/src/Apps/TpsnL0AppC.nc</component-file>
+<include-last-build use-custom="true">false</include-last-build>
+<include-env-default-paths use-custom="true">false</include-env-default-paths>
+<environment_variables use-custom="true" use-default="true"/>
+</target>
+<target loop="false" name="L1" time="0.0" version="4">
+<default>false</default>
+<project use-custom="true"/>
+<target use-custom="true">iris</target>
+<make-extras use-custom="true" use-default="true">
+<extra name="install">
+<parameter ask="false" name="Mote Id">10</parameter>
+</extra>
+<extra name="mib510">
+<parameter ask="false" name="&lt;dev&gt;">/dev/ttyUSB0</parameter>
+</extra>
+</make-extras>
+<includes use-custom="true" use-default="true"/>
+<excludes use-custom="true" use-default="true"/>
+<typedefs use-custom="true" use-default="true"/>
+<macros use-custom="true" use-default="true"/>
+<boards use-custom="true" use-default="true"/>
+<no-std-incl use-custom="true">false</no-std-incl>
+<component use-custom="false"/>
+<component-file use-custom="true">/TPSN/src/Apps/Tpsn1AppC.nc</component-file>
+<include-last-build use-custom="true">false</include-last-build>
+<include-env-default-paths use-custom="true">false</include-env-default-paths>
+<environment_variables use-custom="true" use-default="true"/>
+</target>
+<target loop="false" name="L2" time="0.0" version="4">
+<default>false</default>
+<project use-custom="true"/>
+<target use-custom="true">iris</target>
+<make-extras use-custom="true" use-default="true">
+<extra name="install">
+<parameter ask="false" name="Mote Id">9</parameter>
+</extra>
+<extra name="mib510">
+<parameter ask="false" name="&lt;dev&gt;">/dev/ttyUSB0</parameter>
+</extra>
+</make-extras>
+<includes use-custom="true" use-default="true"/>
+<excludes use-custom="true" use-default="true"/>
+<typedefs use-custom="true" use-default="true"/>
+<macros use-custom="true" use-default="true"/>
+<boards use-custom="true" use-default="true"/>
+<no-std-incl use-custom="true">false</no-std-incl>
+<component use-custom="false"/>
+<component-file use-custom="true">/TPSN/src/Apps/Tpsn2AppC.nc</component-file>
+<include-last-build use-custom="true">false</include-last-build>
+<include-env-default-paths use-custom="true">false</include-env-default-paths>
+<environment_variables use-custom="true" use-default="true"/>
+</target>
+</custom>
+<client-data>
+<data key="MakeOptionsView.expansionState">true</data>
+</client-data>
+</buildTargets>

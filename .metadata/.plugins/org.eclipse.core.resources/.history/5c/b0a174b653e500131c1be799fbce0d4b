@@ -1,0 +1,26 @@
+/**
+ * Este Archivo contiene la estructura para la contruccion del mesaje de Beacon.
+ * 
+* @author Barraza, Suarez
+ * @modified Mayo 23, 2014
+ */
+
+#ifndef BEACON_H
+#define BEACON_H
+
+
+enum {
+  
+  //  recomendaciones:"The active message type selected here can be any value above 127, as 
+  // recommended in the TEP-4 (http://www.tinyos.net/tinyos-2.x/doc/txt/tep4.txt)".
+  BEACON_MSG = 128,   // tipo de Mensaje para  Beacon  128=0x80
+  TIMER_PERIOD_MILLI_BEACON = 5120  // perido para el envio de los paquetes del Beacon 5 secs = 5*1024 "ms"
+};
+
+typedef nx_struct BeaconMsg {
+  nx_uint16_t nodeId;  // node ID (Numero unico)
+  nx_uint16_t seqNr; // secuencia del paquete Beacon
+} BeaconMsg_t;   //Se declara el BeaconMessageType.
+
+
+#endif /* BEACON_H */

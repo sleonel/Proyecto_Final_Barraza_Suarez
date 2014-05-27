@@ -1,0 +1,37 @@
+/**
+ * Beacon Emisor. 
+ * 
+ * Cada cierto tiempo esta aplicacion enviara un paquete de señalizacion a todos los nodos de este proyecto para
+ * para la verificacion del protocolo TPSN
+ * 
+ * 
+ * @author Barraza, Suarez
+ * @modified  Apr 22, 2014
+ */
+
+
+#include "Beacon.h" //Conexion con variables no declaradas en este archivo y son necesarias para su ejecucion.
+
+
+//Programa principal
+configuration BeaconC {
+}
+implementation {
+  //Modulos a implementar.
+  components MainC;
+  components LedsC as MyLedsC;
+  components BeaconP;
+  components new TimerMilliC() as TimerC;
+  components TPSN_ActiveMessageC as AMC; 
+  components new TPSN_SenderC(BEACON_MSG) as SenderC;
+  
+  //Se declaran las conexiones para cada modulo de TinyOS.
+  					
+  BeaconP.Boot      -> MainC;   //encendido del Nodo.
+  BeaconP.Leds      -> MyLedsC; //Configuracion de LEDS para los nodos.
+  BeaconP.Timer0    -> TimerC;  // Tiempos para la transimision de paquetes.
+  BeaconP.Packet    -> AMC;     // Construccion de los paquetes.
+  BeaconP.AMControl -> AMC;     // Configuracin del envio de paquetes.
+  BeaconP.AMSend    -> SenderC; // Envio de paquetes.
+
+   }

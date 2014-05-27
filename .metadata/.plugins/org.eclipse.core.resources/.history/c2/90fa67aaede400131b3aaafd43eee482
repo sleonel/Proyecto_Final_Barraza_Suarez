@@ -1,0 +1,39 @@
+/**NODO L1
+ * 
+ * NOD ID 10
+ * 
+ * 
+ * @author Barraza, Suarez
+ * @modified Apr 22, 2014
+ */
+
+
+#include "Tpsn2.h"
+#include "Tpsn1.h"
+
+
+configuration Tpsn2C {
+}
+implementation {
+  components MainC;
+  components LedsC as MyLedsC;
+  components Tpsn2P as Tpsn2P;
+  components new TimerMilliC() as TimerC;
+
+  components TPSN_ActiveMessageC as AMC; 
+  components new TPSN_SenderC(Tpsn2_MSG) as SenderC;
+  components CorrectTimeC;
+  components new TPSN_ReceiverC(TPSN1_REPORT_MSG) as ReceiverC;
+  components LocalTimeMilliC;
+  
+  Tpsn2P.Boot      -> MainC;
+  Tpsn2P.Leds      -> MyLedsC;
+  Tpsn2P.Timer0    -> TimerC;
+  Tpsn2P.CorrectTime ->  CorrectTimeC.CorrectTime;
+  Tpsn2P.Packet    -> AMC;
+  Tpsn2P.AMControl -> AMC;
+  Tpsn2P.AMSend    -> SenderC;
+  Tpsn2P.PacketTimeStampMilli -> AMC;
+  Tpsn2P.Receive   -> ReceiverC;
+  Tpsn2P.LocalTime -> LocalTimeMilliC.LocalTime;
+}

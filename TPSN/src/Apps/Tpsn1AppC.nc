@@ -1,0 +1,21 @@
+/**
+ * Application for Node level 1 in TPSN protocol.
+ * 
+ * It includes the functionality of Beacon RECEIVER. 
+ * 
+ * Note that we define the macro:
+ *  - NODE_LEVEL as 1:  Used by the NaiveSyncC component
+ * 
+ * @author  Barraza, Suarez.
+ * @modified Apr 22, 2014 
+ */
+
+//read above
+#define NODE_LEVEL 1 
+
+configuration Tpsn1AppC{
+}
+implementation{
+  components BeaconReceiverC;  //receives beacon and reports reception time
+  components Tpsn1C; // does time synchronization
+}

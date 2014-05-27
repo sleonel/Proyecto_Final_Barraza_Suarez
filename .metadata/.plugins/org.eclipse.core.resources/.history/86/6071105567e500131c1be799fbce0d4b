@@ -1,0 +1,26 @@
+/**
+ * Modulos para la correccion del tiempo de cada nodo y 
+ * hacerlos coincidir con el de la base
+ 
+ * @author Barraza, Suarez
+ * @modified Apr 12, 2014
+ */
+
+
+configuration CorrectTimeC {
+ 
+  provides interface CorrectTime;
+
+}
+
+implementation {
+  
+  components MainC;
+  components CorrectTimeP as App;
+  components LocalTimeMilliC;  
+  
+  CorrectTime = App.CorrectTime;  
+  App.Boot -> MainC;
+  App.LocalTime -> LocalTimeMilliC;
+ 
+}

@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">
+<refactoring comment="Move element &apos;BeaconReceiverP.nc&apos; to &apos;BeaconReceiverC.nc&apos;&#x0A;- Original project: &apos;TPSN&apos;&#x0A;- Destination element: &apos;BeaconReceiverC.nc&apos;&#x0A;- Original element: &apos;BeaconReceiverP.nc&apos;&#x0A;- Update references to refactored element" description="Move file" element1="src/Components/Beacon/BeaconReceiverP.nc" files="1" flags="589830" folders="0" id="org.eclipse.jdt.ui.move" policy="org.eclipse.jdt.ui.moveResources" qualified="false" references="true" stamp="1401090882539" target="src/Components/BeaconReceiver/BeaconReceiverC.nc" units="0" version="1.0"/>
+</session>

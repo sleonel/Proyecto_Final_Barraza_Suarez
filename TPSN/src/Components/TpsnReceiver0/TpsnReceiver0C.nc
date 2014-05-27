@@ -1,0 +1,42 @@
+/**
+ * TPSN report to L1 configuration. Basically, when this node hears 
+ * a TPSN request, it sends another packet "TPSN Report Message" with the 
+ * TPSN request sequence number and the time at which the packet was received.
+ * 
+ * @author Barraza, Suarez
+ * @modified Apr 22, 2014
+ */
+
+
+#include "Tpsn1.h"
+#include "TpsnReceiver0.h"
+
+
+configuration TpsnReceiver0C {
+}
+implementation {
+  components MainC;
+  components LedsC;
+  components TpsnReceiver0P as TPSNR0;
+  components new TimerMilliC() as TimerC;
+  components RandomC;
+  components CorrectTimeC;
+  //use our components
+  components TPSN_ActiveMessageC as AMC;
+  components new TPSN_SenderC(TPSN0_REPORT_MSG) as Sender0C;
+  components new TPSN_ReceiverC(Tpsn1_MSG) as Receiver0C;
+  components LocalTimeMilliC;  
+
+  // connections  
+  TPSNR0.Boot                 -> MainC;
+  TPSNR0.Leds                 -> LedsC;
+  TPSNR0.CorrectTime          -> CorrectTimeC;
+  TPSNR0.Random               -> RandomC;
+
+  TPSNR0.Packet               -> AMC;
+  TPSNR0.AMControl            -> AMC;
+  TPSNR0.PacketTimeStampMilli -> AMC;
+  TPSNR0.AMSend               -> Sender0C;
+  TPSNR0.Receive              -> Receiver0C;
+  TPSNR0.LocalTime            -> LocalTimeMilliC;
+}

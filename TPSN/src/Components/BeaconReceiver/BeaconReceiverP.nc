@@ -1,0 +1,148 @@
+/**
+ * Implementation of the BeaconReceiver node.
+ * The node turns on the red LED after booting. When it receives a packet from 
+ * the beacon (BeaconMsg) it checks the local time and generates a new 
+ * packet called "Report Message". This packet contains the information about
+ * the beacon's sequence number and the local time it was received. The report
+ * packet is sent to the BaseStation directly via broadcast, so the BS 
+ * should be within 1-hop distance. The green LED toggles every time a 
+ * "Report message" is sent. 
+ *  
+ * @author Barraza, Suarez.
+ * @modified Apr 22, 2014
+ */
+
+#include <Timer.h>
+#include <RadioConfig.h>
+#include "Beacon.h"
+#include "BeaconReceiver.h"
+
+module BeaconReceiverP {
+  uses interface Boot;
+  uses interface Leds;
+  uses interface Timer<TMilli> as TimerWait;
+  uses interface Packet;
+  uses interface AMSend;
+  uses interface Receive;
+  uses interface SplitControl as AMControl; //Active Message Control
+  uses interface PacketTimeStamp<TMilli, uint32_t> as PacketTimeStampMilli;
+  uses interface CorrectTime;
+  uses interface Random;
+}
+
+implementation {
+
+  // variables reserved in memory
+
+  uint16_t beaconSeqNr;  // 2 Bytes. It contains the sequence number of 
+                         // of the last received beacon
+                         
+  uint32_t beaconRadioTimeStamp; // 4 Bytes. It contains the time stamp of the 
+                                 // last received beacon, as set by the radio
+                            
+  uint32_t beaconAppTimeStamp; // 4 Bytes. It contains the time stamp of the 
+                               // last received beacon, as set by this application
+                            
+
+  message_t pktBuff; // many Bytes, packet buffer. This is not a pointer,
+  // this is the allocation(space) a packet needs in memory. Functions related  
+  // to packets access them via memory pointers / addresses, e.g.: &pktBuff
+  
+  event void Boot.booted() {
+    call AMControl.start(); //start the radio module (ActiveMessageC)
+    call Leds.led0On(); //turn on the red LED.
+  }
+
+  //radio
+  event void AMControl.startDone(error_t err) {
+    if(err != SUCCESS) { // If problems, try again.
+      call AMControl.start(); 
+    } 
+  }
+
+  //radio 
+  event void AMControl.stopDone(error_t err) {
+    //radio was stopped. Do nothing. 
+  }
+
+  //timer to send the report 
+  event void TimerWait.fired() {
+    //Declare first pointers and variables used in this function.
+    ReportMsg_t * rMsg; // Pointer to a report message in memory
+                        // This is not an actual place/buffer in memory. 
+
+    //Prepare and send packet.
+    //First. Cast our packet (message_t) into a "report message" type
+    //       Refer to the packet by using the "rMsg" pointer.
+    rMsg = (ReportMsg_t * )(call Packet.getPayload(&pktBuff, sizeof(ReportMsg_t)));
+ 
+    //Check that the casting was ok. 
+    if (rMsg == NULL){
+      // Casting failed for any reason, the pointer rMsg is NULL. 
+      // Do nothing and leave this function.
+      return;
+    }  
+ 
+    //Otherwise, the pointer rMsg is valid! Prepare packet!
+ 
+    rMsg->nodeId  = TOS_NODE_ID;     // This ID of this node (installed value) 
+    rMsg->bSeqNr  = beaconSeqNr;     // Set last beacon's sequence number
+
+    // Set the radio and application time stamps for the last beacon 
+    // The idea is to compare these two values (which should be close)
+    rMsg->bRadTStamp = beaconRadioTimeStamp; 
+ 
+    // Send the packet. 
+    // AMSend uses the memory address of the original packetBuffer, but
+    // the size of the newly created ReportMsg.  The destination address
+    // is AM_BROADCAST_ADDR, which is defined as 0xFFFF and it means that 
+    // any node around will accept the packet (broadcast).
+    call AMSend.send(AM_BROADCAST_ADDR, &pktBuff, sizeof(ReportMsg_t));
+  }
+
+  event void AMSend.sendDone(message_t * msg, error_t err) {
+    // We ignore the "err" value.
+    // Check if the sendDone corresponds to the sent packet by this
+    // application. Check that the pointer msg points to pktBuff   
+    if(&pktBuff == msg) {
+      // Check passed! This sendDone belongs to the pktBuff we sent, so we 
+      // are sure the transmission has finished.
+      call Leds.led1Toggle(); // toggle the green LED
+    }
+  }
+
+  // When we receive a beacon message, we store the information about 
+  // its sequence number and the time when it was received by the radio 
+  event message_t * Receive.receive(message_t *msg, void *payload, uint8_t len){
+    //Pointer declaration
+    BeaconMsg_t* bMsg; // Pointer to a beacon message
+    uint16_t ranTime; // a random value
+ 
+    // Check if the packet length and the time stamp are valid 
+    if (len == sizeof(BeaconMsg_t)&&(call PacketTimeStampMilli.isValid(msg))) {
+      //Check passed! Cast the payload pointer to Beacon message
+      bMsg = (BeaconMsg_t*)payload;
+      
+      // Get the sequence number of the beacon 
+      beaconSeqNr = bMsg->seqNr;
+      // Get the radio time stamp of the packet and make the correction 
+      // due to a time synchronization protocol (if any exists).
+      beaconRadioTimeStamp = 
+          call CorrectTime.adjust(call PacketTimeStampMilli.timestamp(msg));
+      // Get the current time at this level (application) with the 
+      // respective correction due to the time synchronization protocol.
+      // Compare to the radio time stamp! 
+      beaconAppTimeStamp = call CorrectTime.get();  
+      
+      // Now, as other nodes will try to send at this exact moment, packets can 
+      // collide and the BaseStation will not be able to detect them correctly.
+      // To avoid this we wait a random time between 0 and 1 second using 
+      // the TimerWait timer.   
+      ranTime = (call Random.rand16())%1024;  //value between 0 and 1024 "ms"
+      call TimerWait.startOneShot(ranTime);   //Set timer to wait this value
+    }
+    // We now give back the received msg buffer. 
+    return msg; 
+  }
+  
+}

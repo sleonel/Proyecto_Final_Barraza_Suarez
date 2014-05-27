@@ -1,0 +1,29 @@
+/**
+ * contine paquetes de reportes TPSN con el nivel 0
+ * paquetes para sincronizar L0 con L1
+ * 
+ * @author Barraza, Suarez
+ * @modified Apr 4, 2014
+ */
+
+#ifndef TPSN_RECEIVER0_H
+#define TPSN_RECEIVER0_H
+
+
+
+enum {
+
+  
+  // The active message type selected here can be any value above 127, as 
+  // recommended in the TEP-4 (http://www.tinyos.net/tinyos-2.x/doc/txt/tep4.txt).
+  TPSN0_REPORT_MSG = 145,   //Reportar la estampa de tiempo al L1
+};
+
+typedef nx_struct Tpsn0_ReportMsg {
+  nx_uint16_t nodeId;  // Id del nodo
+  nx_uint16_t Tpsn0SeqNr; // secuencia del paquete
+  nx_uint32_t Tpsn0RadTStamp;  // Estampa de tiempo
+} Tpsn0_ReportMsg_t;    // mensaje reporte TPSN a L2
+
+
+#endif /* TPSN_RECEIVER0_H */

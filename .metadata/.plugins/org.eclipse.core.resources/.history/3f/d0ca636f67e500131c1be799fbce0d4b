@@ -1,0 +1,47 @@
+/**
+ * este modulo realiza las diferentes operaciones para adjustar el tiempo con el que 
+ * sen envian los paquete del protocolo TPSN y las estampa de tiempo donde se reportan
+ * y se verifica el funcionamiento del protocolo.
+ * 
+ * @author Barraza, Suarez.
+ * @modified Apr 12, 2014
+ */
+
+module CorrectTimeP{
+  
+  
+  provides interface CorrectTime;
+  
+  
+  uses {
+    interface Boot;
+    interface LocalTime<TMilli> as LocalTime;  
+    }
+  
+}
+implementation{
+  
+ 
+  uint32_t deltaTime; 
+  
+
+  event void Boot.booted(){
+    deltaTime = 0;
+  }  
+  
+  
+  command uint32_t CorrectTime.get(){
+    return (call LocalTime.get() + deltaTime);
+  }
+ 
+ 
+  command void CorrectTime.set(uint32_t value){
+    deltaTime = value - (call LocalTime.get());
+  }
+ 
+  
+  command uint32_t CorrectTime.adjust(uint32_t value){
+    return (value + deltaTime);   
+  }     
+
+}
